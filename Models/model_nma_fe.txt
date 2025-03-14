@@ -1,0 +1,42 @@
+model{
+  for(i in 1:N){
+    #Arm 1:
+    r[aind[i]] ~ dbin(p[aind[i]], n[aind[i]])
+    logit(p[aind[i]]) <- mu[i]
+    
+    #deviance:
+    rhat[aind[i]] <- p[aind[i]]*n[aind[i]]
+    term1[aind[i]] <- ifelse(r[aind[i]]==0, 0, r[aind[i]]*(log(r[aind[i]]) - log(rhat[aind[i]])))
+    term2[aind[i]] <- (n[aind[i]]-r[aind[i]])*(log(n[aind[i]]-r[aind[i]]) - log(n[aind[i]]-rhat[aind[i]]))
+    dev[aind[i]] <- 2*(term1[aind[i]] + term2[aind[i]])
+    
+          
+    for(k in 1:(a[i]-1)){
+      #Binomial likelihood
+      r[aind[i]+k] ~ dbin(p[aind[i]+k], n[aind[i]+k])
+      logit(p[aind[i]+k]) <- mu[i] + theta[cind[i]+k-1]
+      
+      #define theta
+      #where d[1]=0 (everything is relative to trt[1]=Control)
+      theta[cind[i]+k-1] <- d[t[aind[i]+k]] - d[t[aind[i]]]
+      
+      #deviance:
+      rhat[aind[i]+k] <- p[aind[i]+k]*n[aind[i]+k]
+      term1[aind[i]+k] <- ifelse(r[aind[i]+k]==0, 0, r[aind[i]+k]*(log(r[aind[i]+k]) - log(rhat[aind[i]+k])))
+      term2[aind[i]+k] <- (n[aind[i]+k]-r[aind[i]+k])*(log(n[aind[i]+k]-r[aind[i]+k]) - log(n[aind[i]+k]-rhat[aind[i]+k]))
+      dev[aind[i]+k] <- 2*(term1[aind[i]+k] + term2[aind[i]+k])
+      
+    }#end sum over k
+    #deviance per trial
+    trialdev[i] <- sum(dev[aind[i]:(aind[i]+a[i]-1)])
+  }#end sum over i
+  #total residual deviance
+  totdev <- sum(trialdev[]) #D_res (my eq 12)
+  
+  ## Priors
+  #Treatment effects
+  d[1] <- 0
+  for(j in 2:M){ d[j] ~ dnorm(0, 0.0001) }
+  #baseline treatment effects
+  for(i in 1:N){ mu[i] ~ dnorm(0, 0.0001) }
+}

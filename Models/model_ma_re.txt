@@ -1,0 +1,37 @@
+model{
+  for(i in 1:N){
+    #Arm 1:
+    r1[i] ~ dbin(p1[i], n1[i])
+    logit(p1[i]) <- mu[i]
+    
+    #Arm 2
+    r2[i] ~ dbin(p2[i], n2[i])
+    logit(p2[i]) <- mu[i] + delta[i]
+    
+    delta[i] ~ dnorm(d, 1/tau^2)
+    
+    #deviance:
+    rhat1[i] <- p1[i]*n1[i]
+    termA1[i] <- ifelse(r1[i]==0, 0, r1[i]*(log(r1[i]) - log(rhat1[i])))
+    termB1[i] <- (n1[i]-r1[i])*(log(n1[i]-r1[i]) - log(n1[i]-rhat1[i]))
+    dev1[i] <- 2*(termA1[i] + termB1[i])
+    
+    rhat2[i] <- p2[i]*n2[i]
+    termA2[i] <- ifelse(r2[i]==0, 0, r2[i]*(log(r2[i]) - log(rhat2[i])))
+    termB2[i] <- (n2[i]-r2[i])*(log(n2[i]-r2[i]) - log(n2[i]-rhat2[i]))
+    dev2[i] <- 2*(termA2[i] + termB2[i])
+    
+    #deviance per trial
+    trialdev[i] <- dev1[i]+dev2[i]
+  }#end sum over i
+  #total residual deviance
+  totdev <- sum(trialdev[]) #D_res (my eq 12)
+  
+  ## Priors
+  #Heterogeneity
+  tau ~ dnorm(0,0.25)T(0,)
+  #Treatment effects
+  d ~ dnorm(0, 0.0001) 
+  #baseline treatment effects
+  for(i in 1:N){ mu[i] ~ dnorm(0, 0.0001) }
+}
